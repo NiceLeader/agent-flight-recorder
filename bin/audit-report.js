@@ -158,5 +158,8 @@ for (const date of Object.keys(byDate).sort()) {
   }
 }
 
-console.log('\nΣ ' + sessions.length + ' sessions · ' + totalCalls + ' tool calls'
-  + (totalRisky ? ' · ⚠ ' + totalRisky + ' risky commands' : ' · no risky commands'));
+console.log('\nΣ ' + sessions.length + (sessions.length === 1 ? ' session · ' : ' sessions · ')
+  + totalCalls + ' tool calls'
+  + (totalRisky
+    ? ' · ⚠ ' + totalRisky + (totalRisky === 1 ? ' risky command' : ' risky commands')
+    : ' · no risky commands'));

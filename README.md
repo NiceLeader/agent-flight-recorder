@@ -1,5 +1,7 @@
 # agent-flight-recorder
 
+[![test](https://github.com/NiceLeader/agent-flight-recorder/actions/workflows/test.yml/badge.svg)](https://github.com/NiceLeader/agent-flight-recorder/actions/workflows/test.yml)
+
 **A flight recorder for coding agents. One JSONL line per tool call, local-only, zero tokens - readable by you, never hidden from you.**
 
 Coding agents get full filesystem and shell access. Most of us have no durable record of what they actually did - which files a subagent touched at 3am, what ran right before a bad commit, whether an unattended run quietly used `--force`. And as the ecosystem just learned, the telemetry that *does* exist isn't always telemetry you can read.
@@ -60,7 +62,7 @@ Install as a plugin, or wire the hook directly into `settings.json`:
 }
 ```
 
-`"async": true` matters: the recorder is a pure observer, so Claude Code fires it and moves on - **zero added latency on your tool calls** and zero tokens in your context window.
+`"async": true` matters: the recorder is a pure observer, so Claude Code fires it and moves on - **zero added latency on your tool calls** and zero tokens in your context window. (On older Claude Code versions that predate async hooks the flag is ignored and the hook runs sync - still fail-open, still just one short-lived `node` spawn.)
 
 ### Codex CLI (or any hooks-speaking runtime)
 
