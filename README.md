@@ -15,7 +15,7 @@ This project is the opposite idea: **the audit trail belongs on your disk, in pl
       ⚠ git push --force origin feature/retry
   5a4b3c2d  22:30-23:59  webapp               133 calls   Read:70 Edit:33 Bash:24 Write:6   ✎11  agents:code-reviewer
 
-Σ 3 sessions · 388 tool calls · ⚠ 1 risky commands
+Σ 3 sessions · 388 tool calls · ⚠ 1 risky command
 ```
 
 ## What it is
