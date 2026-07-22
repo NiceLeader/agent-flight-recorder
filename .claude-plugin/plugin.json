@@ -1,0 +1,8 @@
+{
+  "name": "agent-flight-recorder",
+  "version": "0.1.0",
+  "description": "Zero-token, local-only flight recorder for coding agents: one JSONL line per tool call, across Claude Code and Codex, readable by you - never hidden from you.",
+  "author": {
+    "name": "Maciej Lewandowski"
+  }
+}

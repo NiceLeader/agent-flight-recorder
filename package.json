@@ -1,0 +1,25 @@
+{
+  "name": "agent-flight-recorder",
+  "version": "0.1.0",
+  "description": "Zero-token, local-only flight recorder for coding agents: one JSONL line per tool call, across Claude Code and Codex.",
+  "license": "MIT",
+  "author": "Maciej Lewandowski",
+  "bin": {
+    "afr-report": "bin/audit-report.js"
+  },
+  "scripts": {
+    "test": "node test/test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "claude-code",
+    "codex",
+    "ai-agents",
+    "audit-log",
+    "observability",
+    "hooks",
+    "jsonl"
+  ]
+}

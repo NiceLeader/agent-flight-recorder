@@ -1,0 +1,3 @@
+# local publishing drafts - not part of the release
+.drafts/
+node_modules/
