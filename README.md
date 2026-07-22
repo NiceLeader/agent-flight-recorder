@@ -98,6 +98,8 @@ node bin/audit-report.js --json           # machine-readable, pipe it anywhere
 
 **Doesn't Claude Code already have OpenTelemetry?** Yes - for aggregate *metrics*. This is the complementary forensic layer: a per-tool-call, per-session, greppable record on your own disk, with no collector to run, that also covers your other agents.
 
+**Doesn't Claude Code already save full session transcripts?** It does (`~/.claude/projects/*.jsonl`) - and that's exactly why this exists. Transcripts are per-agent, huge, and contain the *full content* of everything: file contents, model output, your prompts. That makes them the wrong artifact to grep casually, retain long-term, or hand to a review process - the transcript itself is a privacy liability. The flight recorder is the deliberately lossy view: metadata-only, content-free, one line per action, one trail across every agent you run. Transcripts answer "replay this session"; the trail answers "what did my agents do this month, and was any of it dangerous" - without keeping a second copy of your codebase around.
+
 **Performance cost?** One `node` spawn per tool call, off the critical path (`async: true`). The write itself is an append of a single line.
 
 **Can I log to a different location?** `AFR_AUDIT_DIR=/path/to/trails`.
