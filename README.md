@@ -10,12 +10,12 @@ This project is the opposite idea: **the audit trail belongs on your disk, in pl
 
 ```
 2026-07-21  (3 sessions)
-  a1b2c3d4  09:12-11:48  my-api               214 calls   Bash:96 Edit:58 Read:41 Grep:12   ✎23
-  9f8e7d6c  10:05-10:22  [codex] my-api        41 calls   Bash:30 Read:11                   ⚠1 risky
-      ⚠ git push --force origin feature/retry
-  5a4b3c2d  22:30-23:59  webapp               133 calls   Read:70 Edit:33 Bash:24 Write:6   ✎11  agents:code-reviewer
+  a1b2c3d4  09:12-11:48  my-api               214 calls   Bash:96 Edit:58 Read:41 Grep:12   files:23
+  9f8e7d6c  10:05-10:22  [codex] my-api        41 calls   Bash:30 Read:11                   !1 risky
+      ! git push --force origin feature/retry
+  5a4b3c2d  22:30-23:59  webapp               133 calls   Read:70 Edit:33 Bash:24 Write:6   files:11  agents:code-reviewer
 
-Σ 3 sessions · 388 tool calls · ⚠ 1 risky command
+TOTAL 3 sessions | 388 tool calls | ! 1 risky command
 ```
 
 ## What it is

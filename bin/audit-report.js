@@ -145,21 +145,21 @@ for (const date of Object.keys(byDate).sort()) {
     const origin = s.origins.size ? '[' + [...s.origins].join(',') + '] ' : '';
     let line = '  ' + id.padEnd(10) + span(s).padEnd(13) + (origin + repoOf(s)).padEnd(20)
       + String(s.calls).padStart(4) + ' calls   ' + toolMix(s, 4);
-    if (s.filesTouched.size) line += '   ✎' + s.filesTouched.size;
+    if (s.filesTouched.size) line += '   files:' + s.filesTouched.size;
     if (s.agents.size) line += '   agents:' + [...s.agents].join(',');
-    if (s.risky.length) line += '   ⚠' + s.risky.length + ' risky';
+    if (s.risky.length) line += '   !' + s.risky.length + ' risky';
     console.log(line);
-    const oneLine = (c) => c.replace(/\s*\n\s*/g, ' ⏎ ').slice(0, 160);
-    if (showFiles) for (const f of [...s.filesTouched].sort()) console.log('      ✎ ' + f);
+    const oneLine = (c) => c.replace(/\s*\n\s*/g, ' ; ').slice(0, 160);
+    if (showFiles) for (const f of [...s.filesTouched].sort()) console.log('      > ' + f);
     if (showCommands) for (const c of s.commands) console.log('      $ ' + oneLine(c));
     if (!showCommands && s.risky.length) {
-      for (const c of s.risky) console.log('      ⚠ ' + oneLine(c));
+      for (const c of s.risky) console.log('      ! ' + oneLine(c));
     }
   }
 }
 
-console.log('\nΣ ' + sessions.length + (sessions.length === 1 ? ' session · ' : ' sessions · ')
+console.log('\nTOTAL ' + sessions.length + (sessions.length === 1 ? ' session | ' : ' sessions | ')
   + totalCalls + ' tool calls'
   + (totalRisky
-    ? ' · ⚠ ' + totalRisky + (totalRisky === 1 ? ' risky command' : ' risky commands')
-    : ' · no risky commands'));
+    ? ' | ! ' + totalRisky + (totalRisky === 1 ? ' risky command' : ' risky commands')
+    : ' | no risky commands'));
