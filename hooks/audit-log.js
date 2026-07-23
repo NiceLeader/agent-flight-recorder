@@ -17,11 +17,21 @@ const path = require('path');
 const os = require('os');
 
 const MAX_FIELD = 500;   // clip long values - the log must stay skimmable
-const MAX_STDIN = 1024 * 1024;
+const MAX_STDIN = 8 * 1024 * 1024;
 
 function clip(v) {
   const s = String(v);
   return s.length > MAX_FIELD ? s.slice(0, MAX_FIELD) + '...[clipped]' : s;
+}
+
+// Commands keep BOTH ends when clipped: a review regex that only saw the
+// prefix could be defeated by padding 500 chars of noise before the
+// dangerous suffix (review finding). Head + tail raises that bar and keeps
+// the interesting part (the last thing the command does) visible.
+function clipCommand(v) {
+  const s = String(v);
+  if (s.length <= MAX_FIELD) return s;
+  return s.slice(0, MAX_FIELD) + '...[clipped ' + (s.length - MAX_FIELD - 200) + ' chars]...' + s.slice(-200);
 }
 
 // Whitelist, not blacklist: only these tool_input fields are ever logged.
@@ -31,7 +41,8 @@ function summarize(toolInput) {
   if (!toolInput || typeof toolInput !== 'object') return {};
   const s = {};
   if (toolInput.file_path) s.file = clip(toolInput.file_path);
-  if (toolInput.command) s.command = clip(toolInput.command);
+  if (toolInput.notebook_path) s.file = clip(toolInput.notebook_path); // NotebookEdit
+  if (toolInput.command) s.command = clipCommand(toolInput.command);
   if (toolInput.pattern) s.pattern = clip(toolInput.pattern);
   if (toolInput.url) s.url = clip(toolInput.url);
   if (toolInput.prompt) s.prompt = clip(toolInput.prompt);
@@ -48,7 +59,12 @@ function record(input, origin) {
   const session = String(input.session_id || 'unknown')
     .replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64) || 'unknown';
   const now = new Date();
-  const file = path.join(dir, now.toISOString().slice(0, 10) + '-' + session + '.jsonl');
+  // LOCAL date in the filename: trails answer "what ran last night" in the
+  // user's timezone. A 00:30 local session must not file under yesterday.
+  const localDate = now.getFullYear() + '-'
+    + String(now.getMonth() + 1).padStart(2, '0') + '-'
+    + String(now.getDate()).padStart(2, '0');
+  const file = path.join(dir, localDate + '-' + session + '.jsonl');
 
   const entry = {
     ts: now.toISOString(),
@@ -69,15 +85,25 @@ function main() {
   const origin = originArg ? originArg[1] : (process.env.AFR_ORIGIN || '');
 
   let raw = '';
+  let truncated = false;
   process.stdin.setEncoding('utf8');
   process.stdin.on('data', (c) => {
     if (raw.length < MAX_STDIN) raw += c;
+    else truncated = true;
   });
   process.stdin.on('end', () => {
     try {
       record(JSON.parse(raw), origin);
     } catch {
-      // fail-open: a broken payload or unwritable disk must never block a tool
+      // A flight recorder must degrade to a MINIMAL entry, never to silence:
+      // "no trail at all for oversized payloads" was a review finding - it
+      // would let any action evade the log by padding one field past the cap.
+      try {
+        record({
+          session_id: 'unparsed', tool_name: 'unparsed',
+          tool_input: { description: 'payload not recorded (' + raw.length + '+ bytes' + (truncated ? ', truncated' : ', unparsable') + ')' },
+        }, origin);
+      } catch { /* unwritable disk - fail-open */ }
     }
     process.exit(0);
   });

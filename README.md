@@ -40,7 +40,14 @@ The field list is a **whitelist**, not a blacklist: only named metadata fields a
 
 ### Claude Code
 
-Install as a plugin, or wire the hook directly into `settings.json`:
+As a plugin:
+
+```
+/plugin marketplace add NiceLeader/agent-flight-recorder
+/plugin install agent-flight-recorder@agent-flight-recorder
+```
+
+Or wire the hook directly into `settings.json`:
 
 ```json
 {
@@ -107,6 +114,10 @@ node bin/audit-report.js --json           # machine-readable, pipe it anywhere
 **Can I log to a different location?** `AFR_AUDIT_DIR=/path/to/trails`.
 
 **Why JSONL and not a database?** Trails are append-only, tiny, and self-partitioned by day+session. `jq`, `grep`, and `audit-report` cover the query patterns; your text editor covers the rest.
+
+**One honest caveat about `command`.** Shell command text IS logged (that is the point), so a command that inlines a secret - `echo "API_KEY=..." > .env` - puts that secret into the trail. The content-free guarantee covers the structured file tools (Write/Edit/MultiEdit/NotebookEdit), where file contents never leave the payload. Treat the trail dir like you treat your shell history.
+
+**Timezones?** Filenames and the report use your LOCAL date and wall-clock (a 00:30 session files under today, not UTC-yesterday); the `ts` field inside every entry stays full ISO-8601 UTC for machines.
 
 ## License
 

@@ -94,11 +94,13 @@ function readEntries(dir) {
   const dir = tmp();
   runHook({
     session_id: 'sess-clip', tool_name: 'Bash',
-    tool_input: { command: 'x'.repeat(2000) },
+    tool_input: { command: 'x'.repeat(2000), description: 'y'.repeat(2000) },
   }, { env: { AFR_AUDIT_DIR: dir } });
   const e = readEntries(dir)[0];
   ok('long fields are clipped to 500 + marker',
-    e && e.command.length < 600 && e.command.endsWith('...[clipped]'));
+    e && e.description.length < 600 && e.description.endsWith('...[clipped]'));
+  ok('long commands keep head AND tail',
+    e && e.command.startsWith('xxx') && e.command.endsWith('xxx') && e.command.includes('[clipped'));
 }
 
 // --- cross-agent origin tag -------------------------------------------------
@@ -127,7 +129,9 @@ function readEntries(dir) {
     runHook('this is not json{{{', { env: { AFR_AUDIT_DIR: dir } });
   } catch (err) { code = err.status; }
   ok('malformed stdin exits 0 (never blocks the tool)', code === 0);
-  ok('malformed stdin writes nothing', readEntries(dir).length === 0);
+  const e = readEntries(dir);
+  ok('malformed stdin degrades to a minimal unparsed entry (never silence)',
+    e.length === 1 && e[0].tool === 'unparsed');
 }
 {
   const dir = tmp();
@@ -136,6 +140,68 @@ function readEntries(dir) {
   const files = fs.readdirSync(dir);
   ok('session id is sanitized in the filename',
     files.length === 1 && !files[0].includes('..') && !files[0].includes('/'));
+}
+
+// --- review findings pinned -------------------------------------------------
+{
+  // Oversized payload must degrade to a minimal entry, never to silence.
+  const dir = tmp();
+  const huge = JSON.stringify({
+    session_id: 'sess-huge', tool_name: 'Write',
+    tool_input: { file_path: '/x.txt', content: 'A'.repeat(9 * 1024 * 1024) },
+  });
+  runHook(huge, { env: { AFR_AUDIT_DIR: dir } });
+  const e = readEntries(dir);
+  ok('oversized payload still leaves a minimal trail entry',
+    e.length === 1 && e[0].tool === 'unparsed' && /bytes/.test(e[0].description || ''));
+}
+{
+  // Clipped commands keep their TAIL so suffix-padded danger stays visible.
+  const dir = tmp();
+  runHook({
+    session_id: 'sess-tail', cwd: '/repo', tool_name: 'Bash',
+    tool_input: { command: 'echo ' + 'x'.repeat(800) + ' && git push --force origin main' },
+  }, { env: { AFR_AUDIT_DIR: dir } });
+  const e = readEntries(dir)[0];
+  ok('clipped command keeps the tail', e && e.command.includes('git push --force'));
+  const rep = JSON.parse(execFileSync(process.execPath, [REPORT, '--json'], {
+    encoding: 'utf8', env: { ...process.env, AFR_AUDIT_DIR: dir },
+  }));
+  ok('risky detection survives the clip', rep.sessions[0].risky.length === 1);
+}
+{
+  // rm flag-spelling variants are all flagged.
+  const dir = tmp();
+  for (const cmd of ['rm -fr /tmp/x', 'rm -f -r /tmp/y', 'rm --recursive --force /tmp/z']) {
+    runHook({ session_id: 'sess-rm', cwd: '/repo', tool_name: 'Bash', tool_input: { command: cmd } },
+      { env: { AFR_AUDIT_DIR: dir } });
+  }
+  const rep = JSON.parse(execFileSync(process.execPath, [REPORT, '--json'], {
+    encoding: 'utf8', env: { ...process.env, AFR_AUDIT_DIR: dir },
+  }));
+  ok('rm -fr / -f -r / --recursive --force all flagged risky', rep.sessions[0].risky.length === 3);
+}
+{
+  // NotebookEdit paths are recorded like any other file tool.
+  const dir = tmp();
+  runHook({ session_id: 'sess-nb', cwd: '/repo', tool_name: 'NotebookEdit',
+    tool_input: { notebook_path: '/repo/analysis.ipynb', new_source: 'SENTINEL_NEVER_LOGGED' } },
+    { env: { AFR_AUDIT_DIR: dir } });
+  const e = readEntries(dir)[0];
+  ok('notebook_path is logged as file', e && e.file === '/repo/analysis.ipynb');
+  const raw = fs.readFileSync(path.join(dir, fs.readdirSync(dir)[0]), 'utf8');
+  ok('notebook cell source is never logged', !raw.includes('SENTINEL_NEVER_LOGGED'));
+}
+{
+  // Terminal escape bytes in logged commands are stripped from report output.
+  const dir = tmp();
+  runHook({ session_id: 'sess-esc', cwd: '/repo', tool_name: 'Bash',
+    tool_input: { command: 'echo evil' + String.fromCharCode(27) + '[1A' + String.fromCharCode(27) + '[2K && git reset --hard' } },
+    { env: { AFR_AUDIT_DIR: dir } });
+  const out = execFileSync(process.execPath, [REPORT], {
+    encoding: 'utf8', env: { ...process.env, AFR_AUDIT_DIR: dir },
+  });
+  ok('escape bytes stripped from report output', !out.includes(String.fromCharCode(27)));
 }
 
 // --- report -----------------------------------------------------------------

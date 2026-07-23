@@ -1,0 +1,13 @@
+{
+  "name": "agent-flight-recorder",
+  "owner": {
+    "name": "Maciej Lewandowski"
+  },
+  "plugins": [
+    {
+      "name": "agent-flight-recorder",
+      "source": "./",
+      "description": "Zero-token, local-only flight recorder for coding agents: one JSONL trail across Claude Code and Codex."
+    }
+  ]
+}

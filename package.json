@@ -21,5 +21,13 @@
     "observability",
     "hooks",
     "jsonl"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NiceLeader/agent-flight-recorder.git"
+  },
+  "homepage": "https://github.com/NiceLeader/agent-flight-recorder#readme",
+  "bugs": {
+    "url": "https://github.com/NiceLeader/agent-flight-recorder/issues"
+  }
 }

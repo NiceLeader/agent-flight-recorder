@@ -52,7 +52,10 @@ const since = flag('today') ? today : dateOpt('since');
 
 // Commands worth a second look before trusting an unattended run. Coarse on
 // purpose: flag for human review, not to block anything.
-const RISKY = /\brm\s+-rf?\b|\bgit\s+push\s+.*(-f\b|--force)|\bgit\s+reset\s+--hard\b|\bgit\s+clean\s+-[a-z]*f|Remove-Item\s+.*-Recurse|\bgit\s+checkout\s+--\s|--no-verify\b|\bdel\s+\/[sq]/i;
+// rm: lookaheads catch every flag spelling (-rf, -fr, -f -r, --recursive
+// --force); checkout/restore: refs before `--`/`.` still count (review
+// finding: `rm -fr` and `git checkout HEAD -- .` passed the old regex clean).
+const RISKY = /\brm\s+(?=[^|;&\n]*(?:-[a-zA-Z]*r|--recursive))(?=[^|;&\n]*(?:-[a-zA-Z]*f|--force))|\bgit\s+[^|;&\n]*\bpush\b[^|;&\n]*(?:\s-[a-zA-Z]*f[a-zA-Z]*\b|--force\b)|\bgit\s+[^|;&\n]*\breset\s+--hard\b|\bgit\s+[^|;&\n]*\bclean\s+[^|;&\n]*-[a-zA-Z]*f|Remove-Item\s+.*-Recurse|\bgit\s+[^|;&\n]*\b(?:checkout|restore)\s+(?:\S+\s+)*?(?:--|\.)(?:\s|$)|--no-verify\b|\bdel\s+\/[sq]/i;
 // Tools that modify files (for the "files touched" list).
 const WRITE_TOOLS = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit']);
 
@@ -61,7 +64,17 @@ if (!fs.existsSync(dir)) {
   process.exit(0);
 }
 
-const files = fs.readdirSync(dir).filter((f) => f.endsWith('.jsonl'));
+if (argv.includes('--session') && sessionOpt === undefined) {
+  console.error('audit-report: --session requires a value.');
+  process.exit(1);
+}
+
+// Strip terminal escape/control bytes before printing ANY logged value: a
+// hostile command could otherwise embed cursor-movement sequences that
+// visually erase its own line in the very report meant to review it.
+const printable = (s) => String(s).replace(/[\x00-\x08\x0b-\x1f\x7f]/g, '');
+
+const files = fs.readdirSync(dir).filter((f) => /^\d{4}-\d{2}-\d{2}-.+\.jsonl$/.test(f));
 const sessions = []; // one entry per file (= per session per day)
 for (const f of files) {
   const date = f.slice(0, 10); // YYYY-MM-DD prefix
@@ -110,7 +123,13 @@ function repoOf(s) {
 }
 function span(s) {
   if (!s.first || !s.last) return '';
-  const hhmm = (iso) => iso.slice(11, 16);
+  // Local wall-clock, matching the local-date filenames: "what ran last
+  // night" should read in the reviewer's timezone, not UTC.
+  const hhmm = (iso) => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return String(iso).slice(11, 16);
+    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  };
   return hhmm(s.first) + '-' + hhmm(s.last);
 }
 function toolMix(s, n) {
@@ -148,9 +167,9 @@ for (const date of Object.keys(byDate).sort()) {
     if (s.filesTouched.size) line += '   files:' + s.filesTouched.size;
     if (s.agents.size) line += '   agents:' + [...s.agents].join(',');
     if (s.risky.length) line += '   !' + s.risky.length + ' risky';
-    console.log(line);
-    const oneLine = (c) => c.replace(/\s*\n\s*/g, ' ; ').slice(0, 160);
-    if (showFiles) for (const f of [...s.filesTouched].sort()) console.log('      > ' + f);
+    console.log(printable(line));
+    const oneLine = (c) => printable(c).replace(/\s*\n\s*/g, ' ; ').slice(0, 160);
+    if (showFiles) for (const f of [...s.filesTouched].sort()) console.log('      > ' + printable(f));
     if (showCommands) for (const c of s.commands) console.log('      $ ' + oneLine(c));
     if (!showCommands && s.risky.length) {
       for (const c of s.risky) console.log('      ! ' + oneLine(c));
